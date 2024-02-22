@@ -74,6 +74,8 @@ namespace Characters
         public float ReelOutScrollTimeLeft = 0f;
         public float TargetMagnitude = 0f;
         public bool IsWalk;
+        public const float RealismMaxReel = 120f;
+        public const float RealismDeathVelocity = 100f;
         private const float MaxVelocityChange = 10f;
         public float RunSpeed;
         private float _originalDashSpeed;
@@ -142,7 +144,7 @@ namespace Characters
             Ungrab(false, true);
         }
 
-        public Vector3 GetAimPoint()
+        public override Vector3 GetAimPoint()
         {
             RaycastHit hit;
             Ray ray = SceneLoader.CurrentCamera.Camera.ScreenPointToRay(Input.mousePosition);
@@ -1382,7 +1384,7 @@ namespace Characters
                             _currentVelocity += Cache.Transform.forward * 4f / Mathf.Max(Cache.Rigidbody.mass, 0.001f);
                             Cache.Rigidbody.velocity = _currentVelocity;
                         }
-                        if (!SettingsManager.InGameCurrent.Misc.AllowStock.Value)
+                        if (!SettingsManager.InGameCurrent.Misc.AllowStock.Value || SettingsManager.InGameCurrent.Misc.RealismMode.Value)
                         {
                             _currentVelocity = _currentVelocity.normalized * Mathf.Min(_currentVelocity.magnitude, 20f);
                             Cache.Rigidbody.velocity = _currentVelocity;
@@ -1390,6 +1392,7 @@ namespace Characters
                     }
                     ToggleSparks(false);
                 }
+                gravity += WeatherManager.GetWeatherForce();
                 Cache.Rigidbody.AddForce(gravity);
                 if (!_cancelGasDisable)
                 {
@@ -1457,6 +1460,12 @@ namespace Characters
             float speedMultiplier = Mathf.Max(1f - (angle * 1.5f * 0.01f), 0f);
             float speed = _lastVelocity.magnitude * speedMultiplier;
             Cache.Rigidbody.velocity = velocity.normalized * speed;
+            float speedDiff = _lastVelocity.magnitude - Cache.Rigidbody.velocity.magnitude;
+            if (SettingsManager.InGameCurrent.Misc.RealismMode.Value && speedDiff > RealismDeathVelocity)
+            {
+                GetKilled("Impact");
+                return;
+            }
         }
 
         private void LateUpdateReelOut()
@@ -1531,6 +1540,11 @@ namespace Characters
             float newSpeed = _currentVelocity.magnitude + addSpeed;
             Vector3 v = position - Cache.Rigidbody.position;
             float reelAxis = GetReelAxis();
+            if (reelAxis > 0f)
+            {
+                if (SettingsManager.InGameCurrent.Misc.RealismMode.Value && Vector3.Distance(Cache.Transform.position, position) > RealismMaxReel)
+                    reelAxis = 0f;
+            }
             float reel = Mathf.Clamp(reelAxis, -0.8f, 0.8f) + 1f;
             v = Vector3.RotateTowards(v, _currentVelocity, 1.53938f * reel, 1.53938f * reel).normalized;
             if (reelAxis > 0f)
@@ -1539,7 +1553,8 @@ namespace Characters
             {
                 if (SettingsManager.SoundSettings.ReelInEffect.Value)
                     PlaySoundRPC(HumanSounds.ReelIn, Util.CreateLocalPhotonInfo());
-                _reelInWaitForRelease = true;
+                if (!SettingsManager.InputSettings.Human.ReelInHolding.Value)
+                    _reelInWaitForRelease = true;
             }
             _currentVelocity = v * newSpeed;
             Cache.Rigidbody.velocity = _currentVelocity;
