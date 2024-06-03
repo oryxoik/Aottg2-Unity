@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using ApplicationManagers;
 using Settings;
 using Characters;
@@ -11,7 +11,6 @@ namespace Controllers
 {
     class HumanPlayerController : BasePlayerController
     {
-        public bool HideCursor;
         protected Human _human;
         protected float _reelOutScrollTimeLeft;
         protected float _reelInScrollCooldownLeft = 0f;
@@ -67,7 +66,7 @@ namespace Controllers
             {
                 if (_human.Grounded && _human.State != HumanState.Idle)
                     return;
-                if (!_human.Grounded && (_human.State == HumanState.EmoteAction || _human.State == HumanState.SpecialAttack ||
+                if (!_human.Grounded && (_human.State == HumanState.EmoteAction || (_human.State == HumanState.SpecialAttack && _human.Special is not DownStrikeSpecial && _human.Special is not StockSpecial) ||
                     _human.Cache.Animation.IsPlaying("dash") || _human.Cache.Animation.IsPlaying("jump") || _human.IsFiringThunderspear()))
                     return;
             }
@@ -220,13 +219,6 @@ namespace Controllers
             UpdateHookInput(inMenu);
             UpdateReelInput(inMenu);
             UpdateDashInput(inMenu);
-            if (!inMenu)
-            {
-                if (SettingsManager.InputSettings.General.HideCursor.GetKeyDown())
-                    HideCursor = !HideCursor;
-            }
-
-
             var states = new HashSet<HumanState>() { HumanState.Grab, HumanState.SpecialAction, HumanState.EmoteAction, HumanState.Reload,
             HumanState.SpecialAttack, HumanState.Stun};
             bool canWeapon = _human.MountState == HumanMountState.None && !states.Contains(_human.State) && !inMenu && !_human.Dead;
@@ -271,9 +263,11 @@ namespace Controllers
             if (_human.Special != null)
             {
                 bool canSpecial = _human.MountState == HumanMountState.None &&
-                    (_human.Special is EscapeSpecial || _human.Special is ShifterTransformSpecial || _human.State != HumanState.Grab)
-                    && _human.CarryState != HumanCarryState.Carry && _human.State != HumanState.EmoteAction && _human.State != HumanState.SpecialAttack && !inMenu && !_human.Dead;
-                if (canSpecial)
+                    (_human.Special is EscapeSpecial || _human.Special is ShifterTransformSpecial || _human.State != HumanState.Grab) && _human.CarryState != HumanCarryState.Carry
+                    && _human.State != HumanState.EmoteAction && _human.State != HumanState.Attack && _human.State != HumanState.SpecialAttack && !inMenu && !_human.Dead;
+                bool canSpecialHold = _human.Special is BaseHoldAttackSpecial && _human.MountState == HumanMountState.None && _human.State != HumanState.Grab && (_human.State != HumanState.Attack || _human.Special is StockSpecial) &&
+                    _human.State != HumanState.EmoteAction && _human.State != HumanState.Grab && _human.CarryState != HumanCarryState.Carry && !inMenu && !_human.Dead;
+                if (canSpecial || canSpecialHold)
                     _human.Special.ReadInput(specialInput);
                 else
                     _human.Special.SetInput(false);
