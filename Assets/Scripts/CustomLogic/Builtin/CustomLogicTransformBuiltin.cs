@@ -195,6 +195,7 @@ namespace CustomLogic
                     _animation.CrossFade(anim, fade);
                 return;
             }
+
             if (_animator != null)
             {
                 anim = anim.Replace('.', '_');
@@ -206,25 +207,46 @@ namespace CustomLogic
             }
         }
 
-        [CLMethod("Plays the specified animation starting from a normalized time.")]
-        public void PlayAnimationAt(string anim, float normalizedTime, float fade = 0.1f)
+        [CLMethod("Plays the specified animation at the given normalized time.")]
+        public void PlayAnimationAt(string anim, float time, float fade = 0.1f)
         {
             if (_animation != null)
             {
                 if (!_animation.IsPlaying(anim))
                 {
                     _animation.CrossFade(anim, fade);
-                    _animation[anim].normalizedTime = normalizedTime;
+                    _animation[anim].time = time;
                 }
                 return;
             }
-
             if (_animator != null)
             {
                 anim = anim.Replace('.', '_');
                 if (_currentAnimation != anim)
                 {
-                    _animator.CrossFade(anim, fade, 0, normalizedTime);
+                    _animator.CrossFade(anim, fade, 0, time);
+                    _currentAnimation = anim;
+                }
+            }
+        }
+
+        [CLMethod("Sets the given animations playback speed.")]
+        public void SetAnimationSpeed(string anim, float speed)
+        {
+            if (_animation != null)
+            {
+                if (!_animation.IsPlaying(anim))
+                {
+                    _animation[anim].speed = speed;
+                }
+                return;
+            }
+            if (_animator != null)
+            {
+                anim = anim.Replace('.', '_');
+                if (_currentAnimation != anim)
+                {
+                    _animator.speed = speed;
                     _currentAnimation = anim;
                 }
             }
@@ -251,13 +273,17 @@ namespace CustomLogic
             if (_animation != null)
                 return _animation[anim].length;
             if (_animator != null)
+                if (_animation != null)
+                    return _animation[anim].length;
+            if (_animator != null)
             {
                 anim = anim.Replace('.', '_');
                 if (_animatorClips == null)
                 {
                     _animatorClips = new Dictionary<string, AnimationClip>();
                     foreach (AnimationClip clip in _animator.runtimeAnimatorController.animationClips)
-                        _animatorClips[clip.name.Replace('.', '_')] = clip;
+                        foreach (AnimationClip clip in _animator.runtimeAnimatorController.animationClips)
+                            _animatorClips[clip.name.Replace('.', '_')] = clip;
                 }
                 return _animatorClips[anim].length;
             }
