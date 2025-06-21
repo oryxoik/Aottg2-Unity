@@ -31,7 +31,6 @@ namespace CustomLogic
             get => Value.radius;
             set => Value.radius = value;
         }
-
         [CLProperty(Description = "The height of the obstacle.")]
         public float Height
         {

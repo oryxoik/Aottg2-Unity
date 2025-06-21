@@ -1,4 +1,4 @@
-﻿using Map;
+using Map;
 using UnityEngine;
 
 namespace CustomLogic
