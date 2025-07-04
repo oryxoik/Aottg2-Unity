@@ -1,3 +1,6 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
 using ApplicationManagers;
 using Cameras;
 using Controllers;
@@ -11,9 +14,6 @@ using Photon.Pun;
 using Photon.Realtime;
 using Settings;
 using SimpleJSONFixed;
-using System;
-using System.Collections;
-using System.Collections.Generic;
 using UI;
 using UnityEngine;
 using Utility;
