@@ -1,3 +1,6 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
 using ApplicationManagers;
 using Cameras;
 using Controllers;
@@ -11,9 +14,6 @@ using Photon.Pun;
 using Photon.Realtime;
 using Settings;
 using SimpleJSONFixed;
-using System;
-using System.Collections;
-using System.Collections.Generic;
 using UI;
 using UnityEngine;
 using Utility;
@@ -2105,31 +2105,78 @@ namespace Characters
                 if (((SwitchbackSpecial)Special).RegisterCollision(this, collision, _lastVelocity.magnitude * 0.7f))
                     return;
             }
+            bool hitTitan = collision.transform.root.gameObject.layer == PhysicsLayer.TitanMovebox;
             if (_lastVelocity.magnitude > 0f)
             {
-                float angle = Mathf.Abs(Vector3.Angle(velocity, _lastVelocity));
-                float speedMultiplier = Mathf.Max(1f - (angle * 1.5f * 0.01f), 0f);
-                float speed = _lastVelocity.magnitude * speedMultiplier;
-                Cache.Rigidbody.velocity = velocity.normalized * speed;
+                // Get the contact point normal
+                ContactPoint theContact = collision.contacts[0];
+                Vector3 collisionNormal = theContact.normal;
+
+                // Calculate the angle between the velocity and the collision normal
+                float hitAngle = Vector3.Angle(_lastVelocity, -collisionNormal);
+
+                if (hitTitan)
+                {
+                    float maxAngle = 0;
+                    float newAngle = 0;
+                    foreach (ContactPoint contact in collision.contacts)
+                    {
+                        Vector3 velNorm = Cache.Rigidbody.velocity.normalized;
+                        newAngle = Vector3.Angle(_lastVelocity, -contact.normal);
+                        newAngle = Mathf.Abs(newAngle - 90f);
+
+                        maxAngle = Mathf.Max(maxAngle, newAngle);
+
+                        if (newAngle < SettingsManager.GeneralSettings.GlancingAngle.Value)
+                        {
+                            // Project velocity along the surface to preserve momentum
+                            Vector3 projected = Vector3.ProjectOnPlane(_lastVelocity, contact.normal);
+                            Cache.Rigidbody.velocity = Vector3.Lerp(_lastVelocity, projected, SettingsManager.GeneralSettings.ProjectCombine.Value);
+                        }
+                    }
+
+                    if (SettingsManager.GeneralSettings.TitanFriction.Value)
+                    {
+                        float speedMultiplier = Mathf.Max(1f - (maxAngle * SettingsManager.GeneralSettings.Friction.Value), 0f);
+                        float speed = _lastVelocity.magnitude * speedMultiplier;
+                        Cache.Rigidbody.velocity = velocity.normalized * speed;
+                    }
+
+                    string message = "Angle of impact: " + newAngle + " degrees";
+                    Debug.Log(message);
+                    InGameManager.SetLabel("MiddleLeft", message, 5);
+                }
+                else
+                {
+                    float angle = Mathf.Abs(Vector3.Angle(velocity, _lastVelocity));
+                    float speedMultiplier = Mathf.Max(1f - (angle * 1.5f * 0.01f), 0f);
+                    float speed = _lastVelocity.magnitude * speedMultiplier;
+                    Cache.Rigidbody.velocity = velocity.normalized * speed;
+                }
+
                 float speedDiff = _lastVelocity.magnitude - Cache.Rigidbody.velocity.magnitude;
                 if (SettingsManager.InGameCurrent.Misc.RealismMode.Value && speedDiff > RealismDeathVelocity)
                     GetHit("Impact", (int)speedDiff, "Impact", "");
             }
-            var titan = collision.transform.root.GetComponent<BaseTitan>();
-            if (titan != null && !titan.AI)
+            if (hitTitan)
             {
-                var normal = collision.contacts[0].normal;
-                var titanVel = titan.GetVelocity();
-                if (titanVel.magnitude > 0f && Vector3.Angle(titanVel, normal) < 70f)
+                var titan = collision.transform.root.GetComponent<BaseTitan>();
+                if (titan != null && !titan.AI)
                 {
-                    Cache.Rigidbody.velocity += titanVel;
+                    var normal = collision.contacts[0].normal;
+                    var titanVel = titan.GetVelocity();
+                    if (titanVel.magnitude > 0f && Vector3.Angle(titanVel, normal) < 70f)
+                    {
+                        Cache.Rigidbody.velocity += titanVel;
+                    }
                 }
             }
         }
 
         protected void OnCollisionStay(Collision collision)
         {
-            if (!Grounded && Cache.Rigidbody.velocity.magnitude >= 15f && !Animation.IsPlaying(HumanAnimations.WallRun) && collision.gameObject.layer != PhysicsLayer.MapObjectTitans)
+            bool hitTitan = collision.transform.root.gameObject.layer == PhysicsLayer.TitanMovebox;
+            if (!Grounded && Cache.Rigidbody.velocity.magnitude >= 15f && !Animation.IsPlaying(HumanAnimations.WallRun) && !hitTitan)
             {
                 if (SettingsManager.InputSettings.Human.WallSlideAttach.Value == (int)WallSlideAttachMethod.Auto ||
                     (SettingsManager.InputSettings.Human.WallSlideAttach.Value == (int)WallSlideAttachMethod.Strafe
@@ -2708,7 +2755,7 @@ namespace Characters
                 if (SettingsManager.InGameCurrent.Misc.ThunderspearPVP.Value)
                 {
 
-                    
+
                     int radiusStat = SettingsManager.AbilitySettings.BombRadius.Value;
                     int cdStat = SettingsManager.AbilitySettings.BombCooldown.Value;
                     int speedStat = SettingsManager.AbilitySettings.BombSpeed.Value;
