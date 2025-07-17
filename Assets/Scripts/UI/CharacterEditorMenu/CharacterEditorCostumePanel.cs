@@ -332,7 +332,7 @@ namespace UI
             switch (name)
             {
                 case "Create":
-                    setNamePopup.Show("New set", () => OnCostumeSetOperationFinish(name), UIManager.GetLocaleCommon("Create"));
+                    setNamePopup.Show("New set", () => OnCostumeSetOperationFinish(name), UIManager.GetLocaleCommon("Create"), (n) => ValidateSetName(n, false));
                     break;
                 case "Delete":
                     if (settings.CustomSets.CanDeleteSelectedSet())
@@ -341,10 +341,10 @@ namespace UI
                     break;
                 case "Rename":
                         string currentSetName = settings.CustomSets.GetSelectedSet().Name.Value;
-                        setNamePopup.Show(currentSetName, () => OnCostumeSetOperationFinish(name), UIManager.GetLocaleCommon("Rename"));
+                        setNamePopup.Show(currentSetName, () => OnCostumeSetOperationFinish(name), UIManager.GetLocaleCommon("Rename"), (n) => ValidateSetName(n, true));
                     break;
                 case "Copy":
-                    setNamePopup.Show("New set", () => OnCostumeSetOperationFinish(name), UIManager.GetLocaleCommon("Copy"));
+                    setNamePopup.Show("New set", () => OnCostumeSetOperationFinish(name), UIManager.GetLocaleCommon("Copy"), (n) => ValidateSetName(n, false));
                     break;
                 case "SaveQuit":
                     SettingsManager.HumanCustomSettings.Save();
@@ -407,7 +407,10 @@ namespace UI
                     Utility.CharacterPreviewGenerator.CleanupOrphanedPreviews();
                     break;
                 case "Rename":
-                    settings.GetSelectedSet().Name.Value = setNamePopup.NameSetting.Value;
+                    string oldName = settings.GetSelectedSet().Name.Value;
+                    string newName = setNamePopup.NameSetting.Value;
+                    Utility.CharacterPreviewGenerator.RenamePreviewFile(oldName, newName, true);
+                    settings.GetSelectedSet().Name.Value = newName;
                     break;
                 case "Copy":
                     settings.CopySelectedSet(setNamePopup.NameSetting.Value);
