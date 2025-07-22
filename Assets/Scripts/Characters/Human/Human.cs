@@ -2854,7 +2854,10 @@ namespace Characters
                             }
                             else if (useGlobalOverrides && globalSet != null)
                             {
-                                return globalValue;
+                                if (!string.IsNullOrEmpty(globalValue))
+                                {
+                                    return globalValue;
+                                }
                             }
                             else if (usePresetSkins && presetSet != null && !string.IsNullOrEmpty(presetValue))
                             {
